@@ -53,4 +53,4 @@ def add():
 def download():
     return send_file(FILE, as_attachment=True)
 
-app.run()
+app.run(host="0.0.0.0", port=10000)
