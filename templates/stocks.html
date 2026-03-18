@@ -2,46 +2,184 @@
 <html>
 <head>
 <title>Stock Tracker</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+/* SAME THEME AS DASHBOARD */
+body {
+    margin: 0;
+    font-family: 'Segoe UI';
+    background: #f4f6f9;
+}
+
+/* HEADER */
+.header {
+    background: linear-gradient(135deg, #000000, #1c1c1c, #2c2c2c);
+    color: #FFD700;
+    padding: 12px 20px;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+.header img {
+    height: 65px;
+}
+
+.menu-btn {
+    display: none;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    background: #111;
+    padding-top: 20px;
+}
+
+.sidebar a {
+    display: block;
+    color: #ddd;
+    padding: 12px 20px;
+    text-decoration: none;
+}
+
+.sidebar a:hover {
+    background: #FFD700;
+    color: black;
+}
+
+/* CONTENT */
+.content {
+    margin-left: 220px;
+    margin-top: 80px;
+    padding: 20px;
+}
+
+/* TABLE */
+.table thead {
+    background: black;
+    color: white;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+    .sidebar {
+        display: none;
+        position: absolute;
+        z-index: 1000;
+    }
+    .content {
+        margin-left: 0;
+    }
+    .menu-btn {
+        display: block;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+    }
+}
+
+</style>
 </head>
 
-<body class="p-4">
+<body>
 
-<h3>Stock Tracker</h3>
+<!-- HEADER -->
+<div class="header d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+        <span class="menu-btn me-3" onclick="toggleSidebar()">☰</span>
+        <img src="{{ url_for('static', filename='logo.png') }}" class="me-3">
+        <h4>Divine Vasthralaya</h4>
+    </div>
+    <a href="/logout" class="btn btn-outline-warning btn-sm">Logout</a>
+</div>
 
-<!-- ADD STOCK -->
-<form method="POST" action="/add_stock" class="row mb-3">
-<input name="id" placeholder="ID" class="col form-control">
-<input name="item" placeholder="Item" class="col form-control">
-<input name="type" placeholder="Type" class="col form-control">
-<input name="actual" placeholder="Actual Price" class="col form-control">
-<input name="sale" placeholder="Sale Price" class="col form-control">
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+    <a href="/">Dashboard</a>
+    <a href="/stocks">Stock Tracker</a>
+</div>
 
-<select name="sold" class="col form-control">
-<option value="Y">Sold</option>
-<option value="N">Pending</option>
-</select>
+<!-- CONTENT -->
+<div class="content">
 
-<button class="btn btn-success col">Add</button>
+<h4>Stock Tracker</h4>
+
+<!-- ADD FORM -->
+<form method="POST" action="/add_stock" class="row mt-3">
+    <input name="id" type="hidden">
+
+    <div class="col">
+        <input name="item" class="form-control" placeholder="Item">
+    </div>
+
+    <div class="col">
+        <input name="type" class="form-control" placeholder="Type">
+    </div>
+
+    <div class="col">
+        <input name="actual" type="number" class="form-control" placeholder="Actual Price">
+    </div>
+
+    <div class="col">
+        <input name="sale" type="number" class="form-control" placeholder="Sale Price">
+    </div>
+
+    <div class="col">
+        <select name="sold" class="form-control">
+            <option value="Y">Sold</option>
+            <option value="N">Pending</option>
+        </select>
+    </div>
+
+    <button class="btn btn-success col">Add</button>
 </form>
 
-<table class="table table-bordered">
+<!-- TABLE -->
+<div class="mt-4">
+<table class="table table-bordered table-hover">
+<thead>
 <tr>
-<th>ID</th><th>Item</th><th>Type</th>
-<th>Actual</th><th>Sale</th><th>Diff</th><th>Sold</th>
-<th>Save</th><th>Delete</th>
+<th>ID</th>
+<th>Date</th>
+<th>Item</th>
+<th>Type</th>
+<th>Actual Price</th>
+<th>Sale Price</th>
+<th>Difference</th>
+<th>Sold</th>
+<th>Save</th>
+<th>Delete</th>
 </tr>
+</thead>
 
+<tbody>
 {% for r in records %}
-<tr>
+<tr class="{% if r.Sold=='Y' %}table-success{% else %}table-warning{% endif %}">
+
 <form method="POST" action="/update_stock">
 <input type="hidden" name="row_id" value="{{r.index}}">
-<td><input name="id" value="{{r.ID}}" class="form-control"></td>
+
+<td>{{ loop.index }}</td>
+<td>{{r.get('Date','')}}</td>
+
 <td><input name="item" value="{{r.Item}}" class="form-control"></td>
 <td><input name="type" value="{{r.Type}}" class="form-control"></td>
+
 <td><input name="actual" value="{{r['Actual Price']}}" class="form-control"></td>
 <td><input name="sale" value="{{r['Sale Price']}}" class="form-control"></td>
+
 <td>{{r.Difference}}</td>
 
 <td>
@@ -52,25 +190,73 @@
 </td>
 
 <td><button class="btn btn-success btn-sm">Save</button></td>
+
 <td>
-<a href="/delete_stock/{{r.index}}" class="btn btn-danger btn-sm"
-onclick="return confirm('Delete stock?')">Delete</a>
+<a href="/delete_stock/{{r.index}}"
+class="btn btn-danger btn-sm"
+onclick="return confirm('Delete stock?')">
+Delete
+</a>
 </td>
+
 </form>
+
 </tr>
 {% endfor %}
+</tbody>
 </table>
+</div>
 
-<canvas id="pie"></canvas>
+<!-- CHARTS -->
+<div class="row mt-4">
+
+<!-- BAR CHART -->
+<div class="col-md-7">
+<canvas id="barChart"></canvas>
+</div>
+
+<!-- SMALL PIE -->
+<div class="col-md-5">
+<canvas id="pieChart" style="max-height:250px;"></canvas>
+</div>
+
+</div>
+
+</div>
 
 <script>
-new Chart(document.getElementById('pie'), {
+
+// SIDEBAR
+function toggleSidebar(){
+    let s = document.getElementById("sidebar");
+    s.style.display = (s.style.display==="block") ? "none" : "block";
+}
+
+// PIE CHART
+new Chart(document.getElementById('pieChart'), {
 type:'pie',
 data:{
 labels:['Sold','Pending'],
-datasets:[{data:[{{sold}},{{pending}}]}]
+datasets:[{
+data:[{{sold}},{{pending}}]
+}]
 }
 });
+
+// BAR CHART (ITEM COUNTS)
+let items = {};
+{% for r in records %}
+items["{{r.Item}}"] = (items["{{r.Item}}"] || 0) + 1;
+{% endfor %}
+
+new Chart(document.getElementById('barChart'), {
+type:'bar',
+data:{
+labels:Object.keys(items),
+datasets:[{label:'Stock Count', data:Object.values(items)}]
+}
+});
+
 </script>
 
 </body>
