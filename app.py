@@ -149,6 +149,7 @@ def stocks():
 def add_stock():
     stock_sheet.append_row([
         request.form['id'],
+        datetime.now().strftime("%Y-%m-%d"),
         request.form['item'],
         request.form['type'],
         float(request.form['actual']),
