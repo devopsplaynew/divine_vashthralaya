@@ -20,12 +20,15 @@ client = gspread.authorize(creds)
 
 sheet = client.open("Divine Expense Tracker").sheet1
 
-# STOCK SHEET
+# ---------------- STOCK SHEET ----------------
 try:
     stock_sheet = client.open("Divine Expense Tracker").worksheet("Stocks")
 except:
     stock_sheet = client.open("Divine Expense Tracker").add_worksheet(title="Stocks", rows="100", cols="10")
-    stock_sheet.append_row(["ID","Item","Type","Actual Price","Sale Price","Difference","Sold"])
+    stock_sheet.append_row([
+        "ID","Date","Item","Type",
+        "Actual Price","Sale Price","Difference","Sold"
+    ])
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET','POST'])
@@ -42,7 +45,7 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# ---------------- GET DATA ----------------
+# ---------------- EXPENSE DATA ----------------
 def get_data():
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
@@ -53,7 +56,7 @@ def get_data():
 
     return df
 
-# ---------------- HOME ----------------
+# ---------------- DASHBOARD ----------------
 @app.route('/')
 def index():
     if 'user' not in session:
@@ -61,7 +64,6 @@ def index():
 
     df = get_data()
 
-    # FILTER
     filter_type = request.args.get('filter')
 
     if not df.empty and filter_type:
@@ -98,7 +100,7 @@ def index():
         category_values=[int(x) for x in df.groupby('Category')['Amount'].sum().values]
     )
 
-# ---------------- ADD ----------------
+# ---------------- ADD EXPENSE ----------------
 @app.route('/add', methods=['POST'])
 def add():
     sheet.append_row([
@@ -109,10 +111,10 @@ def add():
     ])
     return redirect('/')
 
-# ---------------- DELETE (FIXED) ----------------
+# ---------------- DELETE EXPENSE ----------------
 @app.route('/delete/<int:row_id>')
 def delete(row_id):
-    sheet.delete_rows(row_id + 2)  # header offset
+    sheet.delete_rows(row_id + 2)
     return redirect('/')
 
 # ---------------- DOWNLOAD ----------------
@@ -133,6 +135,9 @@ def stocks():
     if df.empty:
         return render_template("stocks.html", records=[], sold=0, pending=0)
 
+    df['Actual Price'] = pd.to_numeric(df['Actual Price'], errors='coerce')
+    df['Sale Price'] = pd.to_numeric(df['Sale Price'], errors='coerce')
+
     df['Difference'] = df['Sale Price'] - df['Actual Price']
 
     sold = len(df[df['Sold']=="Y"])
@@ -147,8 +152,11 @@ def stocks():
 # ---------------- ADD STOCK ----------------
 @app.route('/add_stock', methods=['POST'])
 def add_stock():
+    data = stock_sheet.get_all_records()
+    new_id = len(data) + 1
+
     stock_sheet.append_row([
-        request.form['id'],
+        new_id,
         datetime.now().strftime("%Y-%m-%d"),
         request.form['item'],
         request.form['type'],
@@ -172,8 +180,9 @@ def update_stock():
 
     diff = float(request.form['sale']) - float(request.form['actual'])
 
-    stock_sheet.update(f"A{row_id}:G{row_id}", [[
+    stock_sheet.update(f"A{row_id}:H{row_id}", [[
         request.form['id'],
+        request.form['date'],
         request.form['item'],
         request.form['type'],
         float(request.form['actual']),
