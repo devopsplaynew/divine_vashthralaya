@@ -3,6 +3,8 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import pandas as pd
+import os
+import json
 
 app = Flask(__name__)
 
@@ -12,7 +14,9 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+# ✅ Load credentials from environment variable
+creds_dict = json.loads(os.environ.get("GOOGLE_CREDENTIALS"))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 sheet = client.open("Divine Expense Tracker").sheet1
@@ -31,15 +35,18 @@ def index():
     if df.empty:
         return render_template("index.html", income=0, expense=0, balance=0, labels=[], values=[])
 
+    # ✅ Convert Date first
+    df['Date'] = pd.to_datetime(df['Date'])
+
     # Filters
     start = request.args.get('start')
     end = request.args.get('end')
     search = request.args.get('search')
 
     if start:
-        df = df[df['Date'] >= start]
+        df = df[df['Date'] >= pd.to_datetime(start)]
     if end:
-        df = df[df['Date'] <= end]
+        df = df[df['Date'] <= pd.to_datetime(end)]
     if search:
         df = df[df['Category'].str.contains(search, case=False)]
 
@@ -49,7 +56,6 @@ def index():
     balance = income - expense
 
     # Monthly profit
-    df['Date'] = pd.to_datetime(df['Date'])
     monthly = df.groupby(df['Date'].dt.to_period('M'))['Amount'].sum()
 
     return render_template(
@@ -74,4 +80,5 @@ def add():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
