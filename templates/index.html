@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Divine Vasthralaya</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+    background: black;
+    color: gold;
+    font-family: 'Segoe UI';
+}
+
+.card {
+    background: #111;
+    border: 1px solid gold;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.btn-gold {
+    background: gold;
+    color: black;
+    font-weight: bold;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="text-center mt-3">
+    <img src="/static/logo.png" width="150">
+    <h2>Divine Vasthralaya Expense Tracker</h2>
+</div>
+
+<div class="container mt-4">
+
+<!-- FILTER -->
+<form method="GET" class="mb-3 text-center">
+    <input type="date" name="start">
+    <input type="date" name="end">
+    <input type="text" name="search" placeholder="Search category">
+    <button class="btn btn-gold">Filter</button>
+</form>
+
+<!-- SUMMARY -->
+<div class="row text-center">
+    <div class="col">
+        <div class="card">Income ₹{{income}}</div>
+    </div>
+    <div class="col">
+        <div class="card">Expense ₹{{expense}}</div>
+    </div>
+    <div class="col">
+        <div class="card">Balance ₹{{balance}}</div>
+    </div>
+</div>
+
+<!-- ADD FORM -->
+<form method="POST" action="/add" class="mt-4 text-center">
+    <select name="type" class="form-select w-25 d-inline">
+        <option>Income</option>
+        <option>Expense</option>
+    </select>
+
+    <input name="category" placeholder="Category (Sales, Purchase)" class="form-control w-25 d-inline">
+    <input name="amount" type="number" placeholder="Amount" class="form-control w-25 d-inline">
+
+    <button class="btn btn-gold">Add</button>
+</form>
+
+<!-- DOWNLOAD -->
+<div class="text-center mt-3">
+    <a href="/download" class="btn btn-success">Download Excel</a>
+</div>
+
+<!-- CHART -->
+<canvas id="chart" class="mt-4"></canvas>
+
+<script>
+new Chart(document.getElementById('chart'), {
+type: 'bar',
+data: {
+labels: {{labels|tojson}},
+datasets: [{
+label: 'Monthly Profit',
+data: {{values|tojson}},
+backgroundColor: 'gold'
+}]
+}
+});
+</script>
+
+</div>
+
+</body>
+</html>
