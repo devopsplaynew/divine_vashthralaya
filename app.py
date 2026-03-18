@@ -6,7 +6,7 @@ import pandas as pd
 import os, json, io
 
 app = Flask(__name__)
-app.secret_key = "secret123"   # for login session
+app.secret_key = "secret123"
 
 # ---------------- GOOGLE SHEETS ----------------
 scope = [
@@ -21,6 +21,7 @@ client = gspread.authorize(creds)
 sheet = client.open("Divine Expense Tracker").sheet1
 
 
+# ---------------- GET DATA ----------------
 def get_data():
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
@@ -60,27 +61,37 @@ def index():
     df = get_data()
 
     if df.empty:
-        return render_template("index.html", income=0, expense=0, balance=0,
-                               labels=[], values=[], records=[],
-                               daily_labels=[], income_data=[], expense_data=[],
-                               categories=[], category_values=[])
+        return render_template(
+            "index.html",
+            income=0,
+            expense=0,
+            balance=0,
+            labels=[],
+            values=[],
+            records=[],
+            daily_labels=[],
+            income_data=[],
+            expense_data=[],
+            categories=[],
+            category_values=[]
+        )
 
-    # Calculations
+    # Summary
     income = df[df['Type'] == 'Income']['Amount'].sum()
     expense = df[df['Type'] == 'Expense']['Amount'].sum()
     balance = income - expense
 
-    # Monthly chart
+    # Monthly
     monthly = df.groupby(df['Date'].dt.to_period('M'))['Amount'].sum()
 
-    # Daily chart
+    # Daily (Income vs Expense)
     daily = df.groupby(['Date', 'Type'])['Amount'].sum().unstack().fillna(0)
 
     daily_labels = [str(x.date()) for x in daily.index]
     income_data = [int(x) for x in daily.get('Income', [])]
     expense_data = [int(x) for x in daily.get('Expense', [])]
 
-    # Category pie
+    # Category Pie
     cat = df.groupby('Category')['Amount'].sum()
 
     return render_template(
@@ -114,16 +125,53 @@ def add():
     return redirect('/')
 
 
+# ---------------- DELETE ----------------
+@app.route('/delete', methods=['POST'])
+def delete():
+    if 'user' not in session:
+        return redirect('/login')
+
+    df = get_data()
+
+    # Filter out the row to delete
+    df = df[~(
+        (df['Date'].astype(str) == request.form['date']) &
+        (df['Category'] == request.form['category']) &
+        (df['Amount'] == float(request.form['amount']))
+    )]
+
+    # Rewrite sheet
+    sheet.clear()
+    sheet.append_row(["Date", "Type", "Category", "Amount"])
+
+    for _, row in df.iterrows():
+        sheet.append_row([
+            row['Date'].strftime("%Y-%m-%d"),
+            row['Type'],
+            row['Category'],
+            row['Amount']
+        ])
+
+    return redirect('/')
+
+
 # ---------------- DOWNLOAD ----------------
 @app.route('/download')
 def download():
+    if 'user' not in session:
+        return redirect('/login')
+
     df = get_data()
 
     output = io.BytesIO()
     df.to_excel(output, index=False)
     output.seek(0)
 
-    return send_file(output, download_name="expenses.xlsx", as_attachment=True)
+    return send_file(
+        output,
+        download_name="expenses.xlsx",
+        as_attachment=True
+    )
 
 
 # ---------------- RUN ----------------
