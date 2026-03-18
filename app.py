@@ -8,13 +8,15 @@ import json
 
 app = Flask(__name__)
 
-# Google Sheets connection
+# -------------------------------
+# GOOGLE SHEETS CONNECTION
+# -------------------------------
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
 
-# ✅ Load credentials from environment variable
+# Load credentials from Render environment variable
 creds_dict = json.loads(os.environ.get("GOOGLE_CREDENTIALS"))
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
@@ -22,21 +24,36 @@ client = gspread.authorize(creds)
 sheet = client.open("Divine Expense Tracker").sheet1
 
 
-# Convert sheet to DataFrame
+# -------------------------------
+# GET DATA FROM SHEET
+# -------------------------------
 def get_data():
     data = sheet.get_all_records()
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+
+    if not df.empty:
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        df['Amount'] = pd.to_numeric(df['Amount'], errors='coerce')
+
+    return df
 
 
+# -------------------------------
+# HOME PAGE
+# -------------------------------
 @app.route('/', methods=['GET'])
 def index():
     df = get_data()
 
     if df.empty:
-        return render_template("index.html", income=0, expense=0, balance=0, labels=[], values=[])
-
-    # ✅ Convert Date first
-    df['Date'] = pd.to_datetime(df['Date'])
+        return render_template(
+            "index.html",
+            income=0,
+            expense=0,
+            balance=0,
+            labels=[],
+            values=[]
+        )
 
     # Filters
     start = request.args.get('start')
@@ -48,26 +65,29 @@ def index():
     if end:
         df = df[df['Date'] <= pd.to_datetime(end)]
     if search:
-        df = df[df['Category'].str.contains(search, case=False)]
+        df = df[df['Category'].str.contains(search, case=False, na=False)]
 
     # Calculations
     income = df[df['Type'] == 'Income']['Amount'].sum()
     expense = df[df['Type'] == 'Expense']['Amount'].sum()
     balance = income - expense
 
-    # Monthly profit
+    # Monthly Profit
     monthly = df.groupby(df['Date'].dt.to_period('M'))['Amount'].sum()
 
     return render_template(
         "index.html",
-        income=income,
-        expense=expense,
-        balance=balance,
-        labels=list(map(str, monthly.index)),
-        values=list(monthly.values)
+        income=int(income),
+        expense=int(expense),
+        balance=int(balance),
+        labels=[str(x) for x in monthly.index],
+        values=[int(x) for x in monthly.values]  # ✅ FIXED JSON ERROR
     )
 
 
+# -------------------------------
+# ADD DATA
+# -------------------------------
 @app.route('/add', methods=['POST'])
 def add():
     sheet.append_row([
@@ -79,6 +99,9 @@ def add():
     return redirect('/')
 
 
+# -------------------------------
+# RUN APP
+# -------------------------------
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
