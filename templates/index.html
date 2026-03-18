@@ -1,34 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Divine Tracker</title>
+<title>Divine Vasthralaya</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { background:#f5f5f5; }
-.card { padding:15px; border-radius:10px; }
+body {
+    background: #f4f6f9;
+    font-family: 'Segoe UI';
+}
+
+/* HEADER */
+.header {
+    background: linear-gradient(135deg, #6a11cb, #2575fc);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 0 0 15px 15px;
+}
+
+.header img {
+    height: 50px;
+    opacity: 0.3;
+}
+
+/* CARDS */
+.card {
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+}
+
 .income { background:#28a745; color:white; }
 .expense { background:#fd7e14; color:white; }
 .balance { background:#343a40; color:white; }
+
+/* TABLE */
+.table thead {
+    background: #343a40;
+    color: white;
+}
+
+/* BUTTON */
+.delete-btn {
+    background: red;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+}
 </style>
 </head>
 
 <body>
-<div class="container">
 
-<div class="text-center mt-3">
-    <img src="/static/logo.png" width="120">
-    <h3>Divine Vasthralaya</h3>
-    <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+<div class="header d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+        <img src="/static/logo.png" class="me-2">
+        <h4 class="mb-0">Divine Vasthralaya</h4>
+    </div>
+
+    <a href="/logout" class="btn btn-light btn-sm">Logout</a>
 </div>
 
+<div class="container mt-4">
+
 <!-- SUMMARY -->
-<div class="row mt-3 text-center">
-    <div class="col"><div class="card income">Income ₹{{income}}</div></div>
-    <div class="col"><div class="card expense">Expense ₹{{expense}}</div></div>
-    <div class="col"><div class="card balance">Balance ₹{{balance}}</div></div>
+<div class="row text-center">
+    <div class="col-md-4"><div class="card income">Income ₹{{income}}</div></div>
+    <div class="col-md-4"><div class="card expense">Expense ₹{{expense}}</div></div>
+    <div class="col-md-4"><div class="card balance">Balance ₹{{balance}}</div></div>
 </div>
 
 <!-- ADD -->
@@ -48,16 +90,20 @@ body { background:#f5f5f5; }
     <a href="/download" class="btn btn-warning">Download Excel</a>
 </div>
 
-<!-- CHARTS -->
-<div class="row mt-4">
-    <div class="col-md-6"><canvas id="dailyChart"></canvas></div>
-    <div class="col-md-6"><canvas id="categoryChart"></canvas></div>
-</div>
-
-<!-- TABLE -->
+<!-- TABLE FIRST -->
 <div class="mt-4">
-<table class="table table-bordered">
-<thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th></tr></thead>
+<h5>Daily Records</h5>
+<table class="table table-bordered table-hover">
+<thead>
+<tr>
+    <th>Date</th>
+    <th>Type</th>
+    <th>Category</th>
+    <th>Amount</th>
+    <th>Action</th>
+</tr>
+</thead>
+
 <tbody>
 {% for r in records %}
 <tr class="{% if r.Type=='Income' %}table-success{% else %}table-warning{% endif %}">
@@ -65,10 +111,28 @@ body { background:#f5f5f5; }
 <td>{{r.Type}}</td>
 <td>{{r.Category}}</td>
 <td>{{r.Amount}}</td>
+<td>
+    <form method="POST" action="/delete" onsubmit="return confirm('Delete this record?');">
+        <input type="hidden" name="date" value="{{r.Date}}">
+        <input type="hidden" name="category" value="{{r.Category}}">
+        <input type="hidden" name="amount" value="{{r.Amount}}">
+        <button class="delete-btn">Delete</button>
+    </form>
+</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
+</div>
+
+<!-- CHARTS -->
+<div class="row mt-4">
+    <div class="col-md-7">
+        <canvas id="dailyChart"></canvas>
+    </div>
+    <div class="col-md-5">
+        <canvas id="categoryChart" style="max-height:300px;"></canvas>
+    </div>
 </div>
 
 </div>
