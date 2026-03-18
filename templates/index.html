@@ -7,73 +7,134 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+
+/* GLOBAL */
 body {
-    background: #f4f6f9;
+    margin: 0;
     font-family: 'Segoe UI';
+    background: #f4f6f9;
 }
 
 /* HEADER */
 .header {
-    background: linear-gradient(135deg, #6a11cb, #2575fc);
-    color: white;
-    padding: 15px 20px;
-    border-radius: 0 0 15px 15px;
+    background: linear-gradient(135deg, #000000, #1c1c1c, #2c2c2c);
+    color: #FFD700;
+    padding: 12px 20px;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
 }
 
 .header img {
     height: 50px;
-    opacity: 0.3;
+    opacity: 1;
+    border-radius: 6px;
+}
+
+.header h4 {
+    margin: 0;
+    color: #FFD700;
+    font-weight: bold;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    background: #111;
+    color: white;
+    padding-top: 20px;
+}
+
+.sidebar a {
+    display: block;
+    color: #ddd;
+    padding: 12px 20px;
+    text-decoration: none;
+}
+
+.sidebar a:hover {
+    background: #FFD700;
+    color: black;
+}
+
+/* CONTENT */
+.content {
+    margin-left: 220px;
+    margin-top: 80px;
+    padding: 20px;
 }
 
 /* CARDS */
-.card {
+.card-box {
     padding: 15px;
     border-radius: 10px;
+    color: white;
     text-align: center;
     font-weight: bold;
 }
 
-.income { background:#28a745; color:white; }
-.expense { background:#fd7e14; color:white; }
-.balance { background:#343a40; color:white; }
+.income { background:#28a745; }
+.expense { background:#fd7e14; }
+.balance { background:#343a40; }
 
 /* TABLE */
 .table thead {
-    background: #343a40;
+    background: black;
     color: white;
 }
 
-/* BUTTON */
 .delete-btn {
     background: red;
     color: white;
     border: none;
     padding: 5px 10px;
 }
+
+/* CHART SIZE */
+#categoryChart {
+    max-height: 250px;
+}
+
 </style>
 </head>
 
 <body>
 
+<!-- HEADER -->
 <div class="header d-flex justify-content-between align-items-center">
+
     <div class="d-flex align-items-center">
-        <img src="/static/logo.png" class="me-2">
-        <h4 class="mb-0">Divine Vasthralaya</h4>
+        <img src="{{ url_for('static', filename='logo.png') }}" class="me-3">
+        <h4>Divine Vasthralaya</h4>
     </div>
 
-    <a href="/logout" class="btn btn-light btn-sm">Logout</a>
+    <a href="/logout" class="btn btn-outline-warning btn-sm">Logout</a>
+
 </div>
 
-<div class="container mt-4">
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <a href="#">Dashboard</a>
+    <a href="#">Daily Records</a>
+    <a href="#">Reports</a>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="content">
 
 <!-- SUMMARY -->
 <div class="row text-center">
-    <div class="col-md-4"><div class="card income">Income ₹{{income}}</div></div>
-    <div class="col-md-4"><div class="card expense">Expense ₹{{expense}}</div></div>
-    <div class="col-md-4"><div class="card balance">Balance ₹{{balance}}</div></div>
+    <div class="col-md-4"><div class="card-box income">Income ₹{{income}}</div></div>
+    <div class="col-md-4"><div class="card-box expense">Expense ₹{{expense}}</div></div>
+    <div class="col-md-4"><div class="card-box balance">Balance ₹{{balance}}</div></div>
 </div>
 
-<!-- ADD -->
+<!-- ADD FORM -->
 <form method="POST" action="/add" class="row mt-4">
     <div class="col">
         <select name="type" class="form-control">
@@ -86,11 +147,11 @@ body {
     <div class="col"><button class="btn btn-success w-100">Add</button></div>
 </form>
 
-<div class="text-center mt-3">
+<div class="mt-3">
     <a href="/download" class="btn btn-warning">Download Excel</a>
 </div>
 
-<!-- TABLE FIRST -->
+<!-- TABLE -->
 <div class="mt-4">
 <h5>Daily Records</h5>
 <table class="table table-bordered table-hover">
@@ -131,12 +192,13 @@ body {
         <canvas id="dailyChart"></canvas>
     </div>
     <div class="col-md-5">
-        <canvas id="categoryChart" style="max-height:300px;"></canvas>
+        <canvas id="categoryChart"></canvas>
     </div>
 </div>
 
 </div>
 
+<!-- CHART SCRIPT -->
 <script>
 new Chart(document.getElementById('dailyChart'), {
 type:'line',
