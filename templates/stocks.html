@@ -2,38 +2,60 @@
 <html>
 <head>
 <title>Stock Tracker</title>
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 </head>
 
 <body class="p-4">
 
 <h3>Stock Tracker</h3>
 
+<!-- ADD STOCK -->
+<form method="POST" action="/add_stock" class="row mb-3">
+<input name="id" placeholder="ID" class="col form-control">
+<input name="item" placeholder="Item" class="col form-control">
+<input name="type" placeholder="Type" class="col form-control">
+<input name="actual" placeholder="Actual Price" class="col form-control">
+<input name="sale" placeholder="Sale Price" class="col form-control">
+
+<select name="sold" class="col form-control">
+<option value="Y">Sold</option>
+<option value="N">Pending</option>
+</select>
+
+<button class="btn btn-success col">Add</button>
+</form>
+
 <table class="table table-bordered">
 <tr>
 <th>ID</th><th>Item</th><th>Type</th>
-<th>Actual</th><th>Sale</th><th>Diff</th><th>Sold</th><th>Save</th>
+<th>Actual</th><th>Sale</th><th>Diff</th><th>Sold</th>
+<th>Save</th><th>Delete</th>
 </tr>
 
 {% for r in records %}
 <tr>
 <form method="POST" action="/update_stock">
+<input type="hidden" name="row_id" value="{{r.index}}">
 <td><input name="id" value="{{r.ID}}" class="form-control"></td>
 <td><input name="item" value="{{r.Item}}" class="form-control"></td>
 <td><input name="type" value="{{r.Type}}" class="form-control"></td>
 <td><input name="actual" value="{{r['Actual Price']}}" class="form-control"></td>
 <td><input name="sale" value="{{r['Sale Price']}}" class="form-control"></td>
 <td>{{r.Difference}}</td>
+
 <td>
 <select name="sold" class="form-control">
-<option {% if r.Sold=='Y' %}selected{% endif %}>Y</option>
-<option {% if r.Sold=='N' %}selected{% endif %}>N</option>
+<option value="Y" {% if r.Sold=='Y' %}selected{% endif %}>Y</option>
+<option value="N" {% if r.Sold=='N' %}selected{% endif %}>N</option>
 </select>
 </td>
-<td><button class="btn btn-success">Save</button></td>
+
+<td><button class="btn btn-success btn-sm">Save</button></td>
+<td>
+<a href="/delete_stock/{{r.index}}" class="btn btn-danger btn-sm"
+onclick="return confirm('Delete stock?')">Delete</a>
+</td>
 </form>
 </tr>
 {% endfor %}
