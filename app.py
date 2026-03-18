@@ -8,7 +8,7 @@ import os, json, io
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ---------------- GOOGLE SHEETS ----------------
+# GOOGLE SHEETS
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -20,8 +20,14 @@ client = gspread.authorize(creds)
 
 sheet = client.open("Divine Expense Tracker").sheet1
 
+# STOCK SHEET
+try:
+    stock_sheet = client.open("Divine Expense Tracker").worksheet("Stocks")
+except:
+    stock_sheet = client.open("Divine Expense Tracker").add_worksheet(title="Stocks", rows="100", cols="10")
+    stock_sheet.append_row(["ID","Item","Type","Actual Price","Sale Price","Difference","Sold"])
 
-# ---------------- GET DATA ----------------
+# ---------------- DATA ----------------
 def get_data():
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
@@ -32,25 +38,21 @@ def get_data():
 
     return df
 
-
 # ---------------- LOGIN ----------------
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET','POST'])
 def login():
     if request.method == 'POST':
-        if request.form['username'] == "admin" and request.form['password'] == "admin":
-            session['user'] = "admin"
+        if request.form['username']=="admin" and request.form['password']=="admin":
+            session['user']="admin"
             return redirect('/')
-        else:
-            return render_template("login.html", error="Invalid credentials")
+        return render_template("login.html", error="Invalid credentials")
 
     return render_template("login.html")
 
-
 @app.route('/logout')
 def logout():
-    session.pop('user', None)
+    session.clear()
     return redirect('/login')
-
 
 # ---------------- HOME ----------------
 @app.route('/')
@@ -61,61 +63,32 @@ def index():
     df = get_data()
 
     if df.empty:
-        return render_template(
-            "index.html",
-            income=0,
-            expense=0,
-            balance=0,
-            labels=[],
-            values=[],
-            records=[],
-            daily_labels=[],
-            income_data=[],
-            expense_data=[],
-            categories=[],
-            category_values=[]
-        )
+        return render_template("index.html", income=0, expense=0, balance=0,
+                               records=[], daily_labels=[], income_data=[],
+                               expense_data=[], categories=[], category_values=[])
 
-    # Summary
-    income = df[df['Type'] == 'Income']['Amount'].sum()
-    expense = df[df['Type'] == 'Expense']['Amount'].sum()
+    income = int(df[df['Type']=="Income"]['Amount'].sum())
+    expense = int(df[df['Type']=="Expense"]['Amount'].sum())
     balance = income - expense
 
-    # Monthly
-    monthly = df.groupby(df['Date'].dt.to_period('M'))['Amount'].sum()
-
-    # Daily (Income vs Expense)
-    daily = df.groupby(['Date', 'Type'])['Amount'].sum().unstack().fillna(0)
-
-    daily_labels = [str(x.date()) for x in daily.index]
-    income_data = [int(x) for x in daily.get('Income', [])]
-    expense_data = [int(x) for x in daily.get('Expense', [])]
-
-    # Category Pie
-    cat = df.groupby('Category')['Amount'].sum()
+    daily = df.groupby(['Date','Type'])['Amount'].sum().unstack().fillna(0)
 
     return render_template(
         "index.html",
-        income=int(income),
-        expense=int(expense),
-        balance=int(balance),
-        labels=[str(x) for x in monthly.index],
-        values=[int(x) for x in monthly.values],
+        income=income,
+        expense=expense,
+        balance=balance,
         records=df.to_dict(orient='records'),
-        daily_labels=daily_labels,
-        income_data=income_data,
-        expense_data=expense_data,
-        categories=list(cat.index),
-        category_values=[int(x) for x in cat.values]
+        daily_labels=[str(x.date()) for x in daily.index],
+        income_data=[int(x) for x in daily.get('Income', [])],
+        expense_data=[int(x) for x in daily.get('Expense', [])],
+        categories=list(df.groupby('Category')['Amount'].sum().index),
+        category_values=[int(x) for x in df.groupby('Category')['Amount'].sum().values]
     )
-
 
 # ---------------- ADD ----------------
 @app.route('/add', methods=['POST'])
 def add():
-    if 'user' not in session:
-        return redirect('/login')
-
     sheet.append_row([
         datetime.now().strftime("%Y-%m-%d"),
         request.form['type'],
@@ -124,29 +97,24 @@ def add():
     ])
     return redirect('/')
 
-
 # ---------------- DELETE ----------------
 @app.route('/delete', methods=['POST'])
 def delete():
-    if 'user' not in session:
-        return redirect('/login')
-
     df = get_data()
+    df['Date'] = df['Date'].astype(str)
 
-    # Filter out the row to delete
     df = df[~(
-        (df['Date'].astype(str) == request.form['date']) &
+        (df['Date'] == request.form['date']) &
         (df['Category'] == request.form['category']) &
-        (df['Amount'] == float(request.form['amount']))
+        (df['Amount'].astype(float) == float(request.form['amount']))
     )]
 
-    # Rewrite sheet
     sheet.clear()
-    sheet.append_row(["Date", "Type", "Category", "Amount"])
+    sheet.append_row(["Date","Type","Category","Amount"])
 
     for _, row in df.iterrows():
         sheet.append_row([
-            row['Date'].strftime("%Y-%m-%d"),
+            str(row['Date'])[:10],
             row['Type'],
             row['Category'],
             row['Amount']
@@ -154,25 +122,70 @@ def delete():
 
     return redirect('/')
 
-
 # ---------------- DOWNLOAD ----------------
 @app.route('/download')
 def download():
-    if 'user' not in session:
-        return redirect('/login')
-
     df = get_data()
-
     output = io.BytesIO()
     df.to_excel(output, index=False)
     output.seek(0)
+    return send_file(output, download_name="expenses.xlsx", as_attachment=True)
 
-    return send_file(
-        output,
-        download_name="expenses.xlsx",
-        as_attachment=True
+# ---------------- STOCK PAGE ----------------
+@app.route('/stocks')
+def stocks():
+    data = stock_sheet.get_all_records()
+    df = pd.DataFrame(data)
+
+    if df.empty:
+        return render_template("stocks.html", records=[], sold=0, pending=0)
+
+    df['Difference'] = df['Sale Price'] - df['Actual Price']
+
+    sold = len(df[df['Sold']=="Y"])
+    pending = len(df[df['Sold']=="N"])
+
+    return render_template("stocks.html",
+        records=df.to_dict(orient='records'),
+        sold=sold,
+        pending=pending
     )
 
+# ---------------- ADD STOCK ----------------
+@app.route('/add_stock', methods=['POST'])
+def add_stock():
+    stock_sheet.append_row([
+        request.form['id'],
+        request.form['item'],
+        request.form['type'],
+        float(request.form['actual']),
+        float(request.form['sale']),
+        0,
+        request.form['sold']
+    ])
+    return redirect('/stocks')
+
+# ---------------- UPDATE STOCK ----------------
+@app.route('/update_stock', methods=['POST'])
+def update_stock():
+    data = stock_sheet.get_all_records()
+
+    for i, row in enumerate(data, start=2):
+        if str(row['ID']) == request.form['id']:
+            diff = float(request.form['sale']) - float(request.form['actual'])
+
+            stock_sheet.update(f"A{i}:G{i}", [[
+                request.form['id'],
+                request.form['item'],
+                request.form['type'],
+                float(request.form['actual']),
+                float(request.form['sale']),
+                diff,
+                request.form['sold']
+            ]])
+            break
+
+    return redirect('/stocks')
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':
