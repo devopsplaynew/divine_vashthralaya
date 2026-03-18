@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, send_file
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import os, json, io
 
@@ -27,7 +27,22 @@ except:
     stock_sheet = client.open("Divine Expense Tracker").add_worksheet(title="Stocks", rows="100", cols="10")
     stock_sheet.append_row(["ID","Item","Type","Actual Price","Sale Price","Difference","Sold"])
 
-# ---------------- DATA ----------------
+# ---------------- LOGIN ----------------
+@app.route('/login', methods=['GET','POST'])
+def login():
+    if request.method == 'POST':
+        if request.form['username']=="admin" and request.form['password']=="admin":
+            session['user']="admin"
+            return redirect('/')
+        return render_template("login.html", error="Invalid credentials")
+    return render_template("login.html")
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+# ---------------- GET DATA ----------------
 def get_data():
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
@@ -38,22 +53,6 @@ def get_data():
 
     return df
 
-# ---------------- LOGIN ----------------
-@app.route('/login', methods=['GET','POST'])
-def login():
-    if request.method == 'POST':
-        if request.form['username']=="admin" and request.form['password']=="admin":
-            session['user']="admin"
-            return redirect('/')
-        return render_template("login.html", error="Invalid credentials")
-
-    return render_template("login.html")
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect('/login')
-
 # ---------------- HOME ----------------
 @app.route('/')
 def index():
@@ -61,6 +60,19 @@ def index():
         return redirect('/login')
 
     df = get_data()
+
+    # FILTER
+    filter_type = request.args.get('filter')
+
+    if not df.empty and filter_type:
+        today = datetime.today()
+
+        if filter_type == "today":
+            df = df[df['Date'].dt.date == today.date()]
+        elif filter_type == "week":
+            df = df[df['Date'] >= today - timedelta(days=7)]
+        elif filter_type == "month":
+            df = df[df['Date'].dt.month == today.month]
 
     if df.empty:
         return render_template("index.html", income=0, expense=0, balance=0,
@@ -78,7 +90,7 @@ def index():
         income=income,
         expense=expense,
         balance=balance,
-        records=df.to_dict(orient='records'),
+        records=df.reset_index().to_dict(orient='records'),
         daily_labels=[str(x.date()) for x in daily.index],
         income_data=[int(x) for x in daily.get('Income', [])],
         expense_data=[int(x) for x in daily.get('Expense', [])],
@@ -97,29 +109,10 @@ def add():
     ])
     return redirect('/')
 
-# ---------------- DELETE ----------------
-@app.route('/delete', methods=['POST'])
-def delete():
-    df = get_data()
-    df['Date'] = df['Date'].astype(str)
-
-    df = df[~(
-        (df['Date'] == request.form['date']) &
-        (df['Category'] == request.form['category']) &
-        (df['Amount'].astype(float) == float(request.form['amount']))
-    )]
-
-    sheet.clear()
-    sheet.append_row(["Date","Type","Category","Amount"])
-
-    for _, row in df.iterrows():
-        sheet.append_row([
-            str(row['Date'])[:10],
-            row['Type'],
-            row['Category'],
-            row['Amount']
-        ])
-
+# ---------------- DELETE (FIXED) ----------------
+@app.route('/delete/<int:row_id>')
+def delete(row_id):
+    sheet.delete_rows(row_id + 2)  # header offset
     return redirect('/')
 
 # ---------------- DOWNLOAD ----------------
@@ -146,7 +139,7 @@ def stocks():
     pending = len(df[df['Sold']=="N"])
 
     return render_template("stocks.html",
-        records=df.to_dict(orient='records'),
+        records=df.reset_index().to_dict(orient='records'),
         sold=sold,
         pending=pending
     )
@@ -160,30 +153,33 @@ def add_stock():
         request.form['type'],
         float(request.form['actual']),
         float(request.form['sale']),
-        0,
+        float(request.form['sale']) - float(request.form['actual']),
         request.form['sold']
     ])
+    return redirect('/stocks')
+
+# ---------------- DELETE STOCK ----------------
+@app.route('/delete_stock/<int:row_id>')
+def delete_stock(row_id):
+    stock_sheet.delete_rows(row_id + 2)
     return redirect('/stocks')
 
 # ---------------- UPDATE STOCK ----------------
 @app.route('/update_stock', methods=['POST'])
 def update_stock():
-    data = stock_sheet.get_all_records()
+    row_id = int(request.form['row_id']) + 2
 
-    for i, row in enumerate(data, start=2):
-        if str(row['ID']) == request.form['id']:
-            diff = float(request.form['sale']) - float(request.form['actual'])
+    diff = float(request.form['sale']) - float(request.form['actual'])
 
-            stock_sheet.update(f"A{i}:G{i}", [[
-                request.form['id'],
-                request.form['item'],
-                request.form['type'],
-                float(request.form['actual']),
-                float(request.form['sale']),
-                diff,
-                request.form['sold']
-            ]])
-            break
+    stock_sheet.update(f"A{row_id}:G{row_id}", [[
+        request.form['id'],
+        request.form['item'],
+        request.form['type'],
+        float(request.form['actual']),
+        float(request.form['sale']),
+        diff,
+        request.form['sold']
+    ]])
 
     return redirect('/stocks')
 
