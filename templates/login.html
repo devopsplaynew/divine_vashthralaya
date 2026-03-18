@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container text-center mt-5">
+    <h3>Login</h3>
+
+    <form method="POST" class="w-25 mx-auto">
+        <input name="username" class="form-control mb-2" placeholder="Username">
+        <input name="password" type="password" class="form-control mb-2" placeholder="Password">
+        <button class="btn btn-primary w-100">Login</button>
+    </form>
+
+    {% if error %}
+    <p class="text-danger mt-2">{{error}}</p>
+    {% endif %}
+</div>
+
+</body>
+</html>
