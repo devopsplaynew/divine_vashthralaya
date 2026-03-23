@@ -59,8 +59,10 @@ def get_data():
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
         df['Amount'] = pd.to_numeric(df['Amount'], errors='coerce')
 
-        # Fix NaT issue
+        # Fix empty dates
         df['Date'] = df['Date'].fillna(pd.Timestamp.today())
+
+        # Convert to string (IMPORTANT)
         df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
 
         if 'Spender' not in df.columns:
@@ -76,47 +78,25 @@ def index():
 
     df = get_data()
 
-    filter_type = request.args.get('filter')
-
-    if not df.empty and filter_type:
-        today = datetime.today()
-
-        if filter_type == "today":
-            df = df[pd.to_datetime(df['Date']).dt.date == today.date()]
-        elif filter_type == "week":
-            df = df[pd.to_datetime(df['Date']) >= today - timedelta(days=7)]
-        elif filter_type == "month":
-            df = df[pd.to_datetime(df['Date']).dt.month == today.month]
-
     if df.empty:
         return render_template(
             "index.html",
             income=0,
             expense=0,
             balance=0,
-            records=[],
-            daily_labels=[],
-            income_data=[],
-            expense_data=[]
+            records=[]
         )
 
     income = int(df[df['Type']=="Income"]['Amount'].sum())
     expense = int(df[df['Type']=="Expense"]['Amount'].sum())
     balance = income - expense
 
-    daily = df.copy()
-    daily['Date'] = pd.to_datetime(daily['Date'])
-    daily = daily.groupby(['Date','Type'])['Amount'].sum().unstack().fillna(0)
-
     return render_template(
         "index.html",
         income=income,
         expense=expense,
         balance=balance,
-        records=df.reset_index().to_dict(orient='records'),
-        daily_labels=[str(x.date()) for x in daily.index],
-        income_data=[int(x) for x in daily.get('Income', [])],
-        expense_data=[int(x) for x in daily.get('Expense', [])]
+        records=df.reset_index().to_dict(orient='records')
     )
 
 # ---------------- ADD ----------------
@@ -172,7 +152,6 @@ def stocks():
 
     df['Actual Price'] = pd.to_numeric(df['Actual Price'], errors='coerce')
     df['Sale Price'] = pd.to_numeric(df['Sale Price'], errors='coerce')
-
     df['Difference'] = df['Sale Price'] - df['Actual Price']
 
     sold = len(df[df['Sold']=="Y"])
@@ -184,50 +163,6 @@ def stocks():
         sold=sold,
         pending=pending
     )
-
-# ---------------- ADD STOCK ----------------
-@app.route('/add_stock', methods=['POST'])
-def add_stock():
-    data = stock_sheet.get_all_records()
-    new_id = len(data) + 1
-
-    stock_sheet.append_row([
-        new_id,
-        datetime.now().strftime("%Y-%m-%d"),
-        request.form['item'],
-        request.form['type'],
-        float(request.form['actual']),
-        float(request.form['sale']),
-        float(request.form['sale']) - float(request.form['actual']),
-        request.form['sold']
-    ])
-    return redirect('/stocks')
-
-# ---------------- DELETE STOCK ----------------
-@app.route('/delete_stock/<int:row_id>')
-def delete_stock(row_id):
-    stock_sheet.delete_rows(row_id + 2)
-    return redirect('/stocks')
-
-# ---------------- UPDATE STOCK ----------------
-@app.route('/update_stock', methods=['POST'])
-def update_stock():
-    row_id = int(request.form['row_id']) + 2
-
-    diff = float(request.form['sale']) - float(request.form['actual'])
-
-    stock_sheet.update(f"A{row_id}:H{row_id}", [[
-        request.form['id'],
-        request.form['date'],
-        request.form['item'],
-        request.form['type'],
-        float(request.form['actual']),
-        float(request.form['sale']),
-        diff,
-        request.form['sold']
-    ]])
-
-    return redirect('/stocks')
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':
