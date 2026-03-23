@@ -25,10 +25,7 @@ body {
     position: fixed;
     width: 100%;
     top: 0;
-    z-index: 1000;
 }
-
-.header img { height: 65px; }
 
 /* SIDEBAR */
 .sidebar {
@@ -58,7 +55,7 @@ body {
     padding: 20px;
 }
 
-/* CARDS */
+/* SUMMARY CARDS */
 .card-box {
     padding: 15px;
     border-radius: 10px;
@@ -67,8 +64,8 @@ body {
     font-weight: bold;
 }
 
-.income { background: linear-gradient(135deg,#4caf50,#81c784); }
-.expense { background: linear-gradient(135deg,#fbc02d,#fff176); color:black; }
+.income { background:#66bb6a; }
+.expense { background:#fdd835; color:black; }
 .balance { background:#343a40; }
 
 /* TABLE */
@@ -79,11 +76,11 @@ body {
 
 /* ROW COLORS */
 .row-income {
-    background: linear-gradient(90deg,#e8f5e9,#c8e6c9);
+    background-color: #d4edda !important;
 }
 
 .row-expense {
-    background: linear-gradient(90deg,#fffde7,#fff59d);
+    background-color: #fff3cd !important;
 }
 
 /* MOBILE */
@@ -100,7 +97,7 @@ body {
 <div class="header d-flex justify-content-between">
 <div class="d-flex align-items-center">
 <span onclick="toggleSidebar()" style="cursor:pointer;color:white;margin-right:10px;">☰</span>
-<img src="{{ url_for('static', filename='logo.png') }}">
+<img src="{{ url_for('static', filename='logo.png') }}" height="60">
 <h4 class="ms-3">Divine Vasthralaya</h4>
 </div>
 <a href="/logout" class="btn btn-outline-warning btn-sm">Logout</a>
@@ -160,7 +157,12 @@ body {
 
 <input type="hidden" name="row_id" value="{{r.index}}">
 
-<td><input type="date" name="date" value="{{r.Date}}" class="form-control"></td>
+<!-- FIXED DATE FORMAT -->
+<td>
+<input type="date" name="date"
+value="{{ r.Date.strftime('%Y-%m-%d') if r.Date else '' }}"
+class="form-control">
+</td>
 
 <td>
 <select name="type" class="form-control">
@@ -178,8 +180,11 @@ body {
 <td><button class="btn btn-success btn-sm">Save</button></td>
 
 <td>
-<a href="/delete/{{r.index}}" class="btn btn-danger btn-sm"
-onclick="return confirm('Delete this record?')">Delete</a>
+<a href="/delete/{{r.index}}" 
+class="btn btn-danger btn-sm"
+onclick="return confirm('Delete this record?')">
+Delete
+</a>
 </td>
 
 </form>
@@ -198,6 +203,7 @@ onclick="return confirm('Delete this record?')">Delete</a>
 
 <script>
 
+// SIDEBAR
 function toggleSidebar(){
 let s=document.getElementById("sidebar");
 s.style.display=(s.style.display==="block")?"none":"block";
@@ -217,11 +223,10 @@ type:'pie',
 data:{
 labels:['Income','Expense'],
 datasets:[{data:[{{income}},{{expense}}]}]
-},
-options:{responsive:true, maintainAspectRatio:false}
+}
 });
 
-// BAR (Spender Wise)
+// BAR
 let spenderData = {};
 {% for r in records %}
 spenderData["{{r.Spender}}"] = (spenderData["{{r.Spender}}"] || 0) + Number("{{r.Amount}}");
@@ -237,12 +242,8 @@ data:Object.values(spenderData)
 }]
 },
 options:{
-responsive:true,
-plugins:{
-legend:{display:true}
-},
 scales:{
-x:{ticks:{autoSkip:false}}  // ensures spender names visible
+x:{ticks:{autoSkip:false}}
 }
 }
 });
