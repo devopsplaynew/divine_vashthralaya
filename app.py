@@ -20,7 +20,7 @@ client = gspread.authorize(creds)
 
 sheet = client.open("Divine Expense Tracker").sheet1
 
-# ✅ Ensure Spender column exists
+# Ensure Spender column exists
 headers = sheet.row_values(1)
 if "Spender" not in headers:
     sheet.update('E1', "Spender")
@@ -50,7 +50,7 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# ---------------- EXPENSE DATA ----------------
+# ---------------- GET DATA ----------------
 def get_data():
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
@@ -59,7 +59,10 @@ def get_data():
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
         df['Amount'] = pd.to_numeric(df['Amount'], errors='coerce')
 
-        # Ensure Spender column exists
+        # Fix NaT issue
+        df['Date'] = df['Date'].fillna(pd.Timestamp.today())
+        df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
+
         if 'Spender' not in df.columns:
             df['Spender'] = "Unknown"
 
@@ -79,11 +82,11 @@ def index():
         today = datetime.today()
 
         if filter_type == "today":
-            df = df[df['Date'].dt.date == today.date()]
+            df = df[pd.to_datetime(df['Date']).dt.date == today.date()]
         elif filter_type == "week":
-            df = df[df['Date'] >= today - timedelta(days=7)]
+            df = df[pd.to_datetime(df['Date']) >= today - timedelta(days=7)]
         elif filter_type == "month":
-            df = df[df['Date'].dt.month == today.month]
+            df = df[pd.to_datetime(df['Date']).dt.month == today.month]
 
     if df.empty:
         return render_template(
@@ -101,7 +104,9 @@ def index():
     expense = int(df[df['Type']=="Expense"]['Amount'].sum())
     balance = income - expense
 
-    daily = df.groupby(['Date','Type'])['Amount'].sum().unstack().fillna(0)
+    daily = df.copy()
+    daily['Date'] = pd.to_datetime(daily['Date'])
+    daily = daily.groupby(['Date','Type'])['Amount'].sum().unstack().fillna(0)
 
     return render_template(
         "index.html",
@@ -114,7 +119,7 @@ def index():
         expense_data=[int(x) for x in daily.get('Expense', [])]
     )
 
-# ---------------- ADD EXPENSE ----------------
+# ---------------- ADD ----------------
 @app.route('/add', methods=['POST'])
 def add():
     sheet.append_row([
@@ -126,7 +131,7 @@ def add():
     ])
     return redirect('/')
 
-# ---------------- UPDATE EXPENSE ----------------
+# ---------------- UPDATE ----------------
 @app.route('/update', methods=['POST'])
 def update():
     row_id = int(request.form['row_id']) + 2
@@ -141,7 +146,7 @@ def update():
 
     return redirect('/')
 
-# ---------------- DELETE EXPENSE ----------------
+# ---------------- DELETE ----------------
 @app.route('/delete/<int:row_id>')
 def delete(row_id):
     sheet.delete_rows(row_id + 2)
