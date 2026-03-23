@@ -14,7 +14,7 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 .header {
     background: linear-gradient(135deg,#000,#1c1c1c,#2c2c2c);
     color:#FFD700;
-    padding:12px 20px;
+    padding:12px;
     position:fixed;
     width:100%;
     top:0;
@@ -58,15 +58,9 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 .expense { background:#fdd835; color:black; }
 .balance { background:#343a40; }
 
-.table thead { background:black; color:white; }
-
 .row-income { background:#d4edda; }
 .row-expense { background:#fff3cd; }
 
-@media(max-width:768px){
-.sidebar{display:none;}
-.content{margin-left:0;}
-}
 </style>
 </head>
 
@@ -74,14 +68,12 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 
 <div class="header d-flex justify-content-between">
 <div class="d-flex align-items-center">
-<span onclick="toggleSidebar()" style="cursor:pointer;color:white;margin-right:10px;">☰</span>
-<img src="{{ url_for('static', filename='logo.png') }}" height="60">
-<h4 class="ms-3">Divine Vasthralaya</h4>
+<h4>Divine Vasthralaya</h4>
 </div>
 <a href="/logout" class="btn btn-outline-warning btn-sm">Logout</a>
 </div>
 
-<div class="sidebar" id="sidebar">
+<div class="sidebar">
 <a href="/">Dashboard</a>
 <a href="/stocks">Stock Tracker</a>
 </div>
@@ -104,14 +96,12 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 <div class="col"><input name="category" class="form-control" placeholder="Category"></div>
 <div class="col"><input name="amount" type="number" class="form-control" placeholder="Amount"></div>
 <div class="col"><input name="spender" class="form-control" placeholder="Spender"></div>
-<div class="col"><button class="btn btn-success w-100">Add</button></div>
+<div class="col"><button class="btn btn-success">Add</button></div>
 </form>
 
-<input type="text" id="searchInput" class="form-control mt-4" placeholder="Search records...">
+<h5 class="mt-4">Daily Records</h5>
 
-<h5 class="mt-3">Daily Records</h5>
-
-<table class="table table-bordered table-hover">
+<table class="table">
 <thead>
 <tr>
 <th>Date</th>
@@ -148,10 +138,7 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 
 <td><button class="btn btn-success btn-sm">Save</button></td>
 
-<td>
-<a href="/delete/{{r.index}}" class="btn btn-danger btn-sm"
-onclick="return confirm('Delete this record?')">Delete</a>
-</td>
+<td><a href="/delete/{{r.index}}" class="btn btn-danger btn-sm">Delete</a></td>
 
 </form>
 </tr>
@@ -167,18 +154,6 @@ onclick="return confirm('Delete this record?')">Delete</a>
 </div>
 
 <script>
-function toggleSidebar(){
-let s=document.getElementById("sidebar");
-s.style.display=(s.style.display==="block")?"none":"block";
-}
-
-document.getElementById("searchInput").addEventListener("keyup", function() {
-let value = this.value.toLowerCase();
-document.querySelectorAll("tbody tr").forEach(row => {
-row.style.display = row.innerText.toLowerCase().includes(value) ? "" : "none";
-});
-});
-
 new Chart(document.getElementById('pieChart'),{
 type:'pie',
 data:{labels:['Income','Expense'],
@@ -195,8 +170,7 @@ type:'bar',
 data:{
 labels:Object.keys(spenderData),
 datasets:[{label:'Spender Wise Total',data:Object.values(spenderData)}]
-},
-options:{scales:{x:{ticks:{autoSkip:false}}}}
+}
 });
 </script>
 
