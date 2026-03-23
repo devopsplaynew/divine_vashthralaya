@@ -9,22 +9,42 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+
+/* GLOBAL */
 body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 
+/* HEADER */
 .header {
     background: linear-gradient(135deg,#000,#1c1c1c,#2c2c2c);
-    color:#FFD700;
-    padding:12px;
+    padding:12px 20px;
     position:fixed;
     width:100%;
     top:0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
 }
 
+/* GOLDEN TITLE */
+.title {
+    font-size:26px;
+    font-weight:bold;
+    background: linear-gradient(45deg,#FFD700,#ffcc00,#fff176);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* LOGO */
+.logo {
+    height:80px;
+}
+
+/* SIDEBAR (REDUCED WIDTH) */
 .sidebar {
-    width:220px;
+    width:180px;
     height:100vh;
     position:fixed;
-    top:70px;
+    top:80px;
     background:#111;
 }
 
@@ -40,12 +60,14 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
     color:black;
 }
 
+/* CONTENT */
 .content {
-    margin-left:220px;
-    margin-top:80px;
+    margin-left:180px;
+    margin-top:100px;
     padding:20px;
 }
 
+/* CARDS */
 .card-box {
     padding:15px;
     border-radius:10px;
@@ -54,23 +76,48 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
     font-weight:bold;
 }
 
-.income { background:#66bb6a; }
-.expense { background:#fdd835; color:black; }
+.income { background:#4CAF50; }
+.expense { background:#fbc02d; color:black; }
 .balance { background:#343a40; }
 
-.row-income { background:#d4edda; }
-.row-expense { background:#fff3cd; }
+/* TABLE FIX */
+table {
+    table-layout:auto !important;
+    width:100%;
+}
+
+td, th {
+    white-space:nowrap;
+}
+
+/* STRONG ROW COLORS */
+.row-income td {
+    background-color:#c8e6c9 !important;
+}
+
+.row-expense td {
+    background-color:#fff59d !important;
+}
+
+/* CHART SIZE CONTROL */
+.chart-box {
+    height:300px;
+}
 
 </style>
 </head>
 
 <body>
 
-<div class="header d-flex justify-content-between">
+<div class="header">
+
 <div class="d-flex align-items-center">
-<h4>Divine Vasthralaya</h4>
+<img src="{{ url_for('static', filename='logo.png') }}" class="logo me-3">
+<div class="title">Divine Vasthralaya</div>
 </div>
+
 <a href="/logout" class="btn btn-outline-warning btn-sm">Logout</a>
+
 </div>
 
 <div class="sidebar">
@@ -80,28 +127,25 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 
 <div class="content">
 
+<!-- SUMMARY -->
 <div class="row text-center">
 <div class="col-md-4"><div class="card-box income">Income ₹{{income}}</div></div>
 <div class="col-md-4"><div class="card-box expense">Expense ₹{{expense}}</div></div>
 <div class="col-md-4"><div class="card-box balance">Balance ₹{{balance}}</div></div>
 </div>
 
+<!-- ADD FORM -->
 <form method="POST" action="/add" class="row mt-4">
-<div class="col">
-<select name="type" class="form-control">
-<option>Income</option>
-<option>Expense</option>
-</select>
-</div>
+<div class="col"><select name="type" class="form-control"><option>Income</option><option>Expense</option></select></div>
 <div class="col"><input name="category" class="form-control" placeholder="Category"></div>
 <div class="col"><input name="amount" type="number" class="form-control" placeholder="Amount"></div>
 <div class="col"><input name="spender" class="form-control" placeholder="Spender"></div>
-<div class="col"><button class="btn btn-success">Add</button></div>
+<div class="col"><button class="btn btn-success w-100">Add</button></div>
 </form>
 
 <h5 class="mt-4">Daily Records</h5>
 
-<table class="table">
+<table class="table table-bordered mt-2">
 <thead>
 <tr>
 <th>Date</th>
@@ -146,20 +190,36 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 </tbody>
 </table>
 
+<!-- CHARTS -->
 <div class="row mt-4">
-<div class="col-md-6"><canvas id="pieChart"></canvas></div>
-<div class="col-md-6"><canvas id="barChart"></canvas></div>
+<div class="col-md-6">
+<div class="chart-box">
+<canvas id="pieChart"></canvas>
+</div>
+</div>
+
+<div class="col-md-6">
+<div class="chart-box">
+<canvas id="barChart"></canvas>
+</div>
+</div>
 </div>
 
 </div>
 
 <script>
+
+// PIE (smaller size)
 new Chart(document.getElementById('pieChart'),{
 type:'pie',
-data:{labels:['Income','Expense'],
-datasets:[{data:[{{income}},{{expense}}]}]}
+data:{
+labels:['Income','Expense'],
+datasets:[{data:[{{income}},{{expense}}]}]
+},
+options:{maintainAspectRatio:false}
 });
 
+// BAR
 let spenderData = {};
 {% for r in records %}
 spenderData["{{r.Spender}}"] = (spenderData["{{r.Spender}}"] || 0) + Number("{{r.Amount}}");
@@ -170,8 +230,10 @@ type:'bar',
 data:{
 labels:Object.keys(spenderData),
 datasets:[{label:'Spender Wise Total',data:Object.values(spenderData)}]
-}
+},
+options:{maintainAspectRatio:false}
 });
+
 </script>
 
 </body>
