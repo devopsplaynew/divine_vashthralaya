@@ -163,6 +163,7 @@ body {
     </div>
     <div class="col"><input name="category" class="form-control" placeholder="Category"></div>
     <div class="col"><input name="amount" type="number" class="form-control" placeholder="Amount"></div>
+    <div class="col"><input name="spender" class="form-control" placeholder="Spender"></div>
     <div class="col"><button class="btn btn-success w-100">Add</button></div>
 </form>
 
@@ -176,6 +177,7 @@ body {
 <!-- TABLE -->
 <div class="mt-3">
 <h5>Daily Records</h5>
+
 <table class="table table-bordered table-hover">
 <thead>
 <tr>
@@ -183,24 +185,45 @@ body {
     <th>Type</th>
     <th>Category</th>
     <th>Amount</th>
-    <th>Action</th>
+    <th>Spender</th>
+    <th>Save</th>
+    <th>Delete</th>
 </tr>
 </thead>
 
 <tbody>
 {% for r in records %}
-<tr class="{% if r.Type=='Income' %}table-success{% else %}table-warning{% endif %}">
-<td>{{r.Date}}</td>
-<td>{{r.Type}}</td>
-<td>{{r.Category}}</td>
-<td>{{r.Amount}}</td>
+<tr>
+<form method="POST" action="/update">
+
+<input type="hidden" name="row_id" value="{{r.index}}">
+
+<td><input name="date" value="{{r.Date}}" class="form-control"></td>
+
 <td>
-    <a href="/delete/{{loop.index0}}" 
-       class="btn btn-danger btn-sm"
-       onclick="return confirm('Delete this record?')">
-       Delete
-    </a>
+<select name="type" class="form-control">
+<option {% if r.Type=='Income' %}selected{% endif %}>Income</option>
+<option {% if r.Type=='Expense' %}selected{% endif %}>Expense</option>
+</select>
 </td>
+
+<td><input name="category" value="{{r.Category}}" class="form-control"></td>
+
+<td><input name="amount" value="{{r.Amount}}" class="form-control"></td>
+
+<td><input name="spender" value="{{r.Spender}}" class="form-control"></td>
+
+<td><button class="btn btn-success btn-sm">Save</button></td>
+
+<td>
+<a href="/delete/{{r.index}}" 
+   class="btn btn-danger btn-sm"
+   onclick="return confirm('Delete this record?')">
+   Delete
+</a>
+</td>
+
+</form>
 </tr>
 {% endfor %}
 </tbody>
@@ -209,11 +232,11 @@ body {
 
 <!-- CHARTS -->
 <div class="row mt-4">
-    <div class="col-md-7">
-        <canvas id="dailyChart"></canvas>
+    <div class="col-md-6">
+        <canvas id="pieChart"></canvas>
     </div>
-    <div class="col-md-5">
-        <canvas id="categoryChart"></canvas>
+    <div class="col-md-6">
+        <canvas id="barChart"></canvas>
     </div>
 </div>
 
@@ -236,23 +259,31 @@ document.getElementById("searchInput").addEventListener("keyup", function() {
     });
 });
 
-// CHARTS
-new Chart(document.getElementById('dailyChart'), {
-type:'line',
+// PIE → Income vs Expense
+new Chart(document.getElementById('pieChart'), {
+type:'pie',
 data:{
-labels: {{daily_labels|tojson}},
-datasets:[
-{label:'Income', data: {{income_data|tojson}}},
-{label:'Expense', data: {{expense_data|tojson}}}
-]
+labels:['Income','Expense'],
+datasets:[{
+data:[{{income}},{{expense}}]
+}]
 }
 });
 
-new Chart(document.getElementById('categoryChart'), {
-type:'pie',
+// BAR → Spender
+let spenderData = {};
+{% for r in records %}
+spenderData["{{r.Spender}}"] = (spenderData["{{r.Spender}}"] || 0) + Number("{{r.Amount}}");
+{% endfor %}
+
+new Chart(document.getElementById('barChart'), {
+type:'bar',
 data:{
-labels: {{categories|tojson}},
-datasets:[{data: {{category_values|tojson}}}]
+labels:Object.keys(spenderData),
+datasets:[{
+label:'Spender Wise Total',
+data:Object.values(spenderData)
+}]
 }
 });
 
