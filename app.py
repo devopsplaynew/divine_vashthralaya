@@ -8,7 +8,7 @@ import os, json, io
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# GOOGLE SHEETS
+# ---------------- GOOGLE SHEETS ----------------
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -19,6 +19,11 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 sheet = client.open("Divine Expense Tracker").sheet1
+
+# ✅ Ensure Spender column exists
+headers = sheet.row_values(1)
+if "Spender" not in headers:
+    sheet.update('E1', "Spender")
 
 # ---------------- STOCK SHEET ----------------
 try:
@@ -54,6 +59,10 @@ def get_data():
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
         df['Amount'] = pd.to_numeric(df['Amount'], errors='coerce')
 
+        # Ensure Spender column exists
+        if 'Spender' not in df.columns:
+            df['Spender'] = "Unknown"
+
     return df
 
 # ---------------- DASHBOARD ----------------
@@ -77,9 +86,16 @@ def index():
             df = df[df['Date'].dt.month == today.month]
 
     if df.empty:
-        return render_template("index.html", income=0, expense=0, balance=0,
-                               records=[], daily_labels=[], income_data=[],
-                               expense_data=[], categories=[], category_values=[])
+        return render_template(
+            "index.html",
+            income=0,
+            expense=0,
+            balance=0,
+            records=[],
+            daily_labels=[],
+            income_data=[],
+            expense_data=[]
+        )
 
     income = int(df[df['Type']=="Income"]['Amount'].sum())
     expense = int(df[df['Type']=="Expense"]['Amount'].sum())
@@ -95,9 +111,7 @@ def index():
         records=df.reset_index().to_dict(orient='records'),
         daily_labels=[str(x.date()) for x in daily.index],
         income_data=[int(x) for x in daily.get('Income', [])],
-        expense_data=[int(x) for x in daily.get('Expense', [])],
-        categories=list(df.groupby('Category')['Amount'].sum().index),
-        category_values=[int(x) for x in df.groupby('Category')['Amount'].sum().values]
+        expense_data=[int(x) for x in daily.get('Expense', [])]
     )
 
 # ---------------- ADD EXPENSE ----------------
@@ -107,8 +121,24 @@ def add():
         datetime.now().strftime("%Y-%m-%d"),
         request.form['type'],
         request.form['category'],
-        float(request.form['amount'])
+        float(request.form['amount']),
+        request.form['spender']
     ])
+    return redirect('/')
+
+# ---------------- UPDATE EXPENSE ----------------
+@app.route('/update', methods=['POST'])
+def update():
+    row_id = int(request.form['row_id']) + 2
+
+    sheet.update(f"A{row_id}:E{row_id}", [[
+        request.form['date'],
+        request.form['type'],
+        request.form['category'],
+        float(request.form['amount']),
+        request.form['spender']
+    ]])
+
     return redirect('/')
 
 # ---------------- DELETE EXPENSE ----------------
@@ -143,7 +173,8 @@ def stocks():
     sold = len(df[df['Sold']=="Y"])
     pending = len(df[df['Sold']=="N"])
 
-    return render_template("stocks.html",
+    return render_template(
+        "stocks.html",
         records=df.reset_index().to_dict(orient='records'),
         sold=sold,
         pending=pending
