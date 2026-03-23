@@ -9,86 +9,64 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
 
-/* GLOBAL */
-body {
-    margin: 0;
-    font-family: 'Segoe UI';
-    background: #f4f6f9;
-}
-
-/* HEADER */
 .header {
-    background: linear-gradient(135deg, #000000, #1c1c1c, #2c2c2c);
-    color: #FFD700;
-    padding: 12px 20px;
-    position: fixed;
-    width: 100%;
-    top: 0;
+    background: linear-gradient(135deg,#000,#1c1c1c,#2c2c2c);
+    color:#FFD700;
+    padding:12px 20px;
+    position:fixed;
+    width:100%;
+    top:0;
 }
 
-/* SIDEBAR */
 .sidebar {
-    width: 220px;
-    height: 100vh;
-    position: fixed;
-    top: 70px;
-    background: #111;
+    width:220px;
+    height:100vh;
+    position:fixed;
+    top:70px;
+    background:#111;
 }
 
 .sidebar a {
-    display: block;
-    color: #ddd;
-    padding: 12px;
-    text-decoration: none;
+    display:block;
+    color:#ddd;
+    padding:12px;
+    text-decoration:none;
 }
 
 .sidebar a:hover {
-    background: #FFD700;
-    color: black;
+    background:#FFD700;
+    color:black;
 }
 
-/* CONTENT */
 .content {
-    margin-left: 220px;
-    margin-top: 80px;
-    padding: 20px;
+    margin-left:220px;
+    margin-top:80px;
+    padding:20px;
 }
 
-/* SUMMARY CARDS */
 .card-box {
-    padding: 15px;
-    border-radius: 10px;
-    color: white;
-    text-align: center;
-    font-weight: bold;
+    padding:15px;
+    border-radius:10px;
+    color:white;
+    text-align:center;
+    font-weight:bold;
 }
 
 .income { background:#66bb6a; }
 .expense { background:#fdd835; color:black; }
 .balance { background:#343a40; }
 
-/* TABLE */
-.table thead {
-    background: black;
-    color: white;
-}
+.table thead { background:black; color:white; }
 
-/* ROW COLORS */
-.row-income {
-    background-color: #d4edda !important;
-}
+.row-income { background:#d4edda; }
+.row-expense { background:#fff3cd; }
 
-.row-expense {
-    background-color: #fff3cd !important;
-}
-
-/* MOBILE */
-@media (max-width:768px){
+@media(max-width:768px){
 .sidebar{display:none;}
 .content{margin-left:0;}
 }
-
 </style>
 </head>
 
@@ -110,14 +88,12 @@ body {
 
 <div class="content">
 
-<!-- SUMMARY -->
 <div class="row text-center">
 <div class="col-md-4"><div class="card-box income">Income ₹{{income}}</div></div>
 <div class="col-md-4"><div class="card-box expense">Expense ₹{{expense}}</div></div>
 <div class="col-md-4"><div class="card-box balance">Balance ₹{{balance}}</div></div>
 </div>
 
-<!-- ADD FORM -->
 <form method="POST" action="/add" class="row mt-4">
 <div class="col">
 <select name="type" class="form-control">
@@ -131,10 +107,8 @@ body {
 <div class="col"><button class="btn btn-success w-100">Add</button></div>
 </form>
 
-<!-- SEARCH -->
 <input type="text" id="searchInput" class="form-control mt-4" placeholder="Search records...">
 
-<!-- TABLE -->
 <h5 class="mt-3">Daily Records</h5>
 
 <table class="table table-bordered table-hover">
@@ -157,12 +131,7 @@ body {
 
 <input type="hidden" name="row_id" value="{{r.index}}">
 
-<!-- FIXED DATE FORMAT -->
-<td>
-<input type="date" name="date"
-value="{{ r.Date.strftime('%Y-%m-%d') if r.Date else '' }}"
-class="form-control">
-</td>
+<td><input type="date" name="date" value="{{r.Date}}" class="form-control"></td>
 
 <td>
 <select name="type" class="form-control">
@@ -180,11 +149,8 @@ class="form-control">
 <td><button class="btn btn-success btn-sm">Save</button></td>
 
 <td>
-<a href="/delete/{{r.index}}" 
-class="btn btn-danger btn-sm"
-onclick="return confirm('Delete this record?')">
-Delete
-</a>
+<a href="/delete/{{r.index}}" class="btn btn-danger btn-sm"
+onclick="return confirm('Delete this record?')">Delete</a>
 </td>
 
 </form>
@@ -193,7 +159,6 @@ Delete
 </tbody>
 </table>
 
-<!-- CHARTS -->
 <div class="row mt-4">
 <div class="col-md-6"><canvas id="pieChart"></canvas></div>
 <div class="col-md-6"><canvas id="barChart"></canvas></div>
@@ -202,14 +167,11 @@ Delete
 </div>
 
 <script>
-
-// SIDEBAR
 function toggleSidebar(){
 let s=document.getElementById("sidebar");
 s.style.display=(s.style.display==="block")?"none":"block";
 }
 
-// SEARCH
 document.getElementById("searchInput").addEventListener("keyup", function() {
 let value = this.value.toLowerCase();
 document.querySelectorAll("tbody tr").forEach(row => {
@@ -217,16 +179,12 @@ row.style.display = row.innerText.toLowerCase().includes(value) ? "" : "none";
 });
 });
 
-// PIE
 new Chart(document.getElementById('pieChart'),{
 type:'pie',
-data:{
-labels:['Income','Expense'],
-datasets:[{data:[{{income}},{{expense}}]}]
-}
+data:{labels:['Income','Expense'],
+datasets:[{data:[{{income}},{{expense}}]}]}
 });
 
-// BAR
 let spenderData = {};
 {% for r in records %}
 spenderData["{{r.Spender}}"] = (spenderData["{{r.Spender}}"] || 0) + Number("{{r.Amount}}");
@@ -236,18 +194,10 @@ new Chart(document.getElementById('barChart'),{
 type:'bar',
 data:{
 labels:Object.keys(spenderData),
-datasets:[{
-label:'Spender Wise Total',
-data:Object.values(spenderData)
-}]
+datasets:[{label:'Spender Wise Total',data:Object.values(spenderData)}]
 },
-options:{
-scales:{
-x:{ticks:{autoSkip:false}}
-}
-}
+options:{scales:{x:{ticks:{autoSkip:false}}}}
 });
-
 </script>
 
 </body>
