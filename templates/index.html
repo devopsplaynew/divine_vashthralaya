@@ -34,29 +34,9 @@ body { margin:0; font-family:'Segoe UI'; background:#f4f6f9; }
     -webkit-text-fill-color: transparent;
 }
 
-/* COLUMN WIDTH CONTROL */
-th:nth-child(1), td:nth-child(1) { width: 140px; } /* Date */
-th:nth-child(2), td:nth-child(2) { width: 120px; } /* Type */
-th:nth-child(3), td:nth-child(3) { width: 300px; } /* Category (WIDE) */
-th:nth-child(4), td:nth-child(4) { width: 120px; } /* Amount (SMALL) */
-th:nth-child(5), td:nth-child(5) { width: 140px; } /* Spender (MEDIUM) */
-th:nth-child(6), td:nth-child(6) { width: 80px; }  /* Save */
-th:nth-child(7), td:nth-child(7) { width: 80px; }  /* Delete */
-
-/* Prevent overflow breaking UI */
-td input {
-    width: 100%;
-}
-
-/* Optional: truncate very long text nicely */
-td:nth-child(3) input {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
 /* LOGO */
 .logo {
-    height:100px;
+    height:80px;
 }
 
 /* SIDEBAR (REDUCED WIDTH) */
